@@ -1,0 +1,246 @@
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+
+# For Comparative plots
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Load your customer churn data
+dataset = pd.read_csv('Telecom_churn_data_80.csv')
+dataset
+
+#Preprocessing and Sorting Dataset
+#Counting the number of obervations 
+dataset.shape
+
+# checking if there are missing values
+dataset.isnull().sum().sum()
+
+#checking if there is any duplicate values in the dataset
+dataset.duplicated().sum()
+
+#Removing variable state as non-relivant variable
+del dataset['State']
+
+dataset.describe() # For descriptive Analysis
+
+# Create a box plot of Total day charge by churn status
+sns.boxplot(x='Churn', y='Total day charge', data=dataset)
+# Set the title
+plt.title('Total day charge by Churn Status')
+# Show the plot
+plt.show()
+
+# Create a box plot of Total eve charge by churn status
+sns.boxplot(x='Churn', y='Total eve charge', data=dataset)
+# Set the title
+plt.title('Total eve charge by Churn Status')
+# Show the plot
+plt.show()
+
+# Create a box plot of Total night charge by churn status
+sns.boxplot(x='Churn', y='Total night charge', data=dataset)
+# Set the title
+plt.title('Total night charge by Churn Status')
+# Show the plot
+plt.show()
+
+# Create a box plot of Total intl charge by churn status
+sns.boxplot(x='Churn', y='Total intl charge', data=dataset)
+# Set the title
+plt.title('Total intl charge by Churn Status')
+# Show the plot
+plt.show()
+
+# Distribution plot of customer churn labels.
+
+sns.countplot(x='Churn', data=dataset, color='blue', width=0.5)
+plt.title('Customer Churn Distribution Count')
+
+# Show the plot
+plt.show()
+
+# Extract labels and sizes
+churn_count = dataset['Churn'].value_counts()
+print(churn_count)
+
+# Extract labels and sizes
+churn_count = {'True': 388, 'False': 2278}
+labels = churn_count.keys()
+sizes = churn_count.values()
+
+# Create pie chart
+plt.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=140)
+
+# Add title
+plt.title('Customer Churn Distribution Diagram')
+
+# Display chart
+plt.show()
+
+dataset.fillna(method='ffill', inplace=True)  # Replace with appropriate method
+
+#Encode categorical features 
+le = LabelEncoder()
+for col in dataset.select_dtypes(include=['object']).columns:
+    dataset[col] = le.fit_transform(dataset[col])
+
+#Feature scaling 
+scaler = StandardScaler()
+numeric_cols = dataset.select_dtypes(include=['float64', 'int64']).columns
+dataset[numeric_cols] = scaler.fit_transform(dataset[numeric_cols])
+
+#Separate features and target variable
+X = dataset.drop('Churn', axis=1)
+y = dataset['Churn']
+
+# Split data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+#Predicting Churn Using Decision Tree Model
+from sklearn.tree import DecisionTreeClassifier
+
+# Create Decision Tree model
+dt_model = DecisionTreeClassifier(random_state=42)
+
+# Train the model
+dt_model.fit(X_train, y_train)
+
+# Make predictions   
+y_pred = dt_model.predict(X_test)
+
+#Evaluate the Decision Tree model
+print("DECISION TREE MODEL OUTPUT")
+print("Accuracy:", accuracy_score(y_test, y_pred))
+print("Classification Report:\n", classification_report(y_test, y_pred))
+print("Confusion Matrix:\n", confusion_matrix(y_test, y_pred))
+
+#Predicting Churn Using Random Forest Model
+from sklearn.ensemble import RandomForestClassifier  # For feature importance
+
+#Create Random Forest model
+rf_model = RandomForestClassifier(n_estimators=100, random_state=42)
+
+# Train the model
+rf_model.fit(X_train, y_train)
+
+#Make predictions
+y_pred = rf_model.predict(X_test)
+
+#Evaluate the Random Forest model
+print("RANDOM FOREST MODEL OUTPUT")
+print("Accuracy:", accuracy_score(y_test, y_pred))
+print("Classification Report:\n", classification_report(y_test, y_pred))
+print("Confusion Matrix:\n", confusion_matrix(y_test, y_pred))
+
+#Predicting Churn Using Gradient Boosting Model
+from sklearn.ensemble import GradientBoostingClassifier
+
+# Create Gradient Boosting model
+gb_model = GradientBoostingClassifier(n_estimators=100, learning_rate=0.1, random_state=42)
+
+# Train the gb_model
+gb_model.fit(X_train, y_train)
+
+# Make gb_model predictions
+y_pred = gb_model.predict(X_test)
+
+# Evaluate the gb_model
+print("GRADIENT BOOSTING MODEL OUTPUT")
+print("Accuracy:", accuracy_score(y_test, y_pred))
+print("Classification Report:\n", classification_report(y_test, y_pred))
+print("Confusion Matrix:\n", confusion_matrix(y_test, y_pred))
+
+#Building an Hybrid model
+#Implementing Stacking in hybride model
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.ensemble import StackingClassifier
+
+# Define a Base models
+base_models = [
+    ('rf', RandomForestClassifier(n_estimators=100, random_state=42)),
+    ('gb', GradientBoostingClassifier(n_estimators=100, random_state=42)),
+    ('dt', make_pipeline(StandardScaler(), DecisionTreeClassifier(random_state=42))) # Decision Tree as the standard Scaler model
+]
+
+# Creating a Meta-model
+meta_model = RandomForestClassifier(n_estimators=100, random_state=42)
+
+# Defining a Stacking classifier
+stacking_model = StackingClassifier(estimators=base_models, final_estimator=meta_model)
+
+# Train the stacking_model
+stacking_model.fit(X_train, y_train)
+
+# Make stacking_model predictions
+y_pred = stacking_model.predict(X_test)
+
+# Evaluate the stacking_model
+print("HYBRID STACKING MODEL OUTPUT")
+print("Accuracy:", accuracy_score(y_test, y_pred))
+print("Classification Report:\n", classification_report(y_test, y_pred))
+print("Confusion Matrix:\n", confusion_matrix(y_test, y_pred))
+
+# Visualize the decision tree
+
+from sklearn import tree
+import matplotlib.pyplot as plt
+
+plt.figure(figsize=(20, 10))
+plt.title("Decision Tree feature Ranking")
+tree.plot_tree(dt_model, filled=True, feature_names=X.columns, class_names=['Not Churn', 'Churn'])
+plt.show()
+
+# Calculate feature importance
+importances = dt_model.feature_importances_
+indices = np.argsort(importances)[::-1]
+
+# Print the feature ranking
+print("Feature ranking:")
+for f in range(X.shape[1]):
+    print("%d. feature %s (%f)" % (f + 1, X.columns[indices[f]], importances[indices[f]]))
+
+# Create a SHAP explainer
+
+import shap
+shap.initjs()
+
+explainer = shap.TreeExplainer(gb_model)
+
+# Calculate SHAP values for the training data
+shap_values = explainer.shap_values(X_train)
+
+# SHAP Summary plot
+shap.summary_plot(shap_values, X_train)
+
+#shap_values = shap_values.values
+index = 10  # Replace with desired index
+
+# SHAP Force plot for a single instance
+shap.plots.force(explainer.expected_value[0], shap_values[..., 0])
+
+# SHAP force plot for the first observation
+shap.force_plot(explainer.expected_value[0], shap_values[0,:], X_train.iloc[0,:])
+
+# SHAP value dependence plot for the feature 'Total day charge', Total evening charge', and 'Total night charge'
+shap.dependence_plot('Total day charge', shap_values, X_train)
+shap.dependence_plot('Total eve charge', shap_values, X_train)
+shap.dependence_plot('Total night charge', shap_values, X_train)
+
+# Calculate SHAP interaction values
+shap_interaction_values = explainer.shap_interaction_values(X_train)
+
+# Plot the interaction between 'Total day calls' and 'Total day charge'
+shap.dependence_plot(('Total day calls','Total day charge'), shap_interaction_values, X_train)
+# Plot the interaction between 'Total day minutes' and 'Total day charge'
+shap.dependence_plot(('Total day minutes','Total day charge'), shap_interaction_values, X_train)
+
+#Decision Plot
+shap.decision_plot(explainer.expected_value[0], shap_values[0], X_test.columns)
+
+
